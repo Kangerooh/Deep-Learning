@@ -1,0 +1,5 @@
+pip install scipy numpy
+
+from scipy.io import loadmat
+
+data = loadmat
