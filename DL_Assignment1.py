@@ -12,7 +12,7 @@ series = data["Xtrain"].flatten()
 # print(series[:30])
 # print(series.shape)
 
-
+# hoi allemaal, ik test even git :D
 
 # plot data to visualize patterns
 # plt.plot(series)
