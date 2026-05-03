@@ -7,9 +7,9 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.model_selection import KFold
-from sklearn.metrics import LSE_score
 import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from tqdm import tqdm
 
 
 def load_data(data_file):
@@ -124,8 +124,8 @@ def visualize(LSE_dict):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--window_step_size", type=int, default=10,
-                        help="Step size for window sizes (default: 10)") #when running it asks us the step size we want
+    parser.add_argument("--window_step_size", type=int, default=50,
+                        help="Step size for window sizes (default: 50)") #when running it asks us the step size we want
     args = parser.parse_args()
 
     
@@ -141,11 +141,11 @@ if __name__ == "__main__":
     window_step_size = args.window_step_size
     window_size = list(range(window_step_size, 990, window_step_size))
     
-    for i in window_size:
+    for i in tqdm(window_size, desc="Testing Window Sizes"):
         X_train, y_train = create_windows(scaled_data, i)
 
         
-        k = 5  # Number of folds
+        k = 10  # Number of folds
         model = build_LSTM_model(X_train)
 
         LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
