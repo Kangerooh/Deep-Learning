@@ -10,6 +10,7 @@ from sklearn.model_selection import KFold
 import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tqdm import tqdm
+import csv
 
 
 def load_data(data_file):
@@ -57,8 +58,6 @@ def create_windows(data, window_size):
     return np.array(X), np.array(y)
 
 def split_data(X,y): 
-    #TODO: cross validation!
-    
     # reshape to format of samples, timestamp, features
     X = X.reshape(X.shape[0], X.shape[1], 1)
 
@@ -90,7 +89,7 @@ def build_LSTM_model(X_train):
 
 def training_with_cross_validation(k, model, X_train, y_train):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    errors_per_fold = [] # Rename for clarity
+    errors_per_fold = [] 
 
     for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
         print(f'Fold {fold + 1}')
@@ -99,28 +98,48 @@ def training_with_cross_validation(k, model, X_train, y_train):
         
         model.fit(X_train_fold, y_train_fold, epochs=5, batch_size=32, verbose=0)
         
-        # Get raw continuous predictions (do NOT use argmax)
+        # raw continuous predictions 
         val_predictions = model.predict(X_val_fold)
         
-        # Use MSE instead of LSE_score
+        # use MSE instead of LSE score
         mse = mean_squared_error(y_val_fold, val_predictions)
         errors_per_fold.append(mse)
         print(f'MSE for fold {fold + 1}: {mse:.5f}')
         
     return errors_per_fold
 
-def visualize(LSE_dict):
+def visualize(LSE_dict, title):
     x = sorted(LSE_dict.keys())
     y = [LSE_dict[i] for i in x]
 
-    plt.figure()
-    plt.plot(x, y, marker='o')
+    # to find the minimum value and its index
+    min_mse = min(y)
+    min_x = x[y.index(min_mse)]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(x, y, marker='o', label='MSE')
+    
+    plt.ylim(bottom=0)  # bottom y axis is set to 0
+    plt.xlim(left=0)    # same for x axis
+
+    # a red dotted line for the minimum value and add this value to the right side
+    plt.axhline(y=min_mse, color='r', linestyle='--', linewidth=1, alpha=0.7)
+    plt.text(1.01, min_mse, f'Min MSE: {min_mse:.5f}', 
+             color='red', va='center', fontweight='bold',
+             transform=plt.gca().get_yaxis_transform())
+
+    # vertical lines to have clearer graph
+    plt.axvline(x=min_x, color='gray', linestyle=':', alpha=0.5)
+    plt.text(min_x, min_mse, f'  Size: {min_x}', color='blue', va='bottom')
+
     plt.xlabel("Window Size")
     plt.ylabel("Mean Squared Error")
-    plt.title("Mean Squared Error vs Window Size")
-    plt.grid(True)
-    plt.show()
+    plt.title(f"Mean Squared Error vs Window Size: {title}")
+    plt.grid(True, linestyle=':', alpha=0.6)
     
+    #safe the plot
+    plt.savefig(f'results/{title}.png', bbox_inches='tight')
+    plt.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -145,15 +164,21 @@ if __name__ == "__main__":
         X_train, y_train = create_windows(scaled_data, i)
 
         
-        k = 10  # Number of folds
+        k = 10  # number of folds
         model = build_LSTM_model(X_train)
 
         LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
         average_LSE = np.mean(LSE_per_fold)
         LSE_dict[i] = average_LSE
     
-    visualize(LSE_dict)
-    print("test")
+    visualize(LSE_dict, "LSTM")
+    
+    #safe LSE dictionary
+    with open('results/LSTM.csv', 'w') as csv_file:  
+        writer = csv.writer(csv_file)
+        for key, value in LSE_dict.items():
+            writer.writerow([key, value])
+
     
     
     
