@@ -87,7 +87,7 @@ def build_LSTM_model(X_train):
     return model
 
 
-def training_with_cross_validation(k, model, X_train, y_train):
+def training_with_cross_validation(k, X_train, y_train):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     errors_per_fold = [] 
 
@@ -95,7 +95,8 @@ def training_with_cross_validation(k, model, X_train, y_train):
         print(f'Fold {fold + 1}')
         X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
         y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
-        
+
+        model = build_LSTM_model(X_train_fold) #reset model every fold
         model.fit(X_train_fold, y_train_fold, epochs=5, batch_size=32, verbose=0)
         
         # raw continuous predictions 
@@ -165,9 +166,10 @@ if __name__ == "__main__":
 
         
         k = 10  # number of folds
-        model = build_LSTM_model(X_train)
+        # model = build_LSTM_model(X_train)
 
-        LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
+        # LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
+        LSE_per_fold = training_with_cross_validation(k, X_train, y_train)
         average_LSE = np.mean(LSE_per_fold)
         LSE_dict[i] = average_LSE
     
