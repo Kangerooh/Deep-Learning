@@ -190,7 +190,7 @@ if __name__ == "__main__":
     #safe LSE dictionary
     with open('results/LSTM.csv', 'w') as csv_file:  
         writer = csv.writer(csv_file)
-        for key, value in LSE_dict.items():
+        for key, value in MSE_dict.items():
             writer.writerow([key, value])
 
     
