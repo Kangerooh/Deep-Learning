@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 #from sklearn.model_selection import train_test_split #kan dit gebruikt worden voor crossvalidation?
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, GRU
 from sklearn.model_selection import TimeSeriesSplit
 import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -86,6 +86,18 @@ def build_LSTM_model(X_train):
     
     return model
 
+def build_GRU_model(X_train):
+    model = Sequential()
+    model.add(GRU(units=128, return_sequences=True,
+            input_shape=(X_train.shape[1], 1)))
+    model.add(Dropout(0.2))
+    model.add(GRU(units=128))
+    model.add(Dropout(0.2))
+    model.add(Dense(1))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    return model
 
 def training_with_cross_validation(k, X_train, y_train):
     time_folds = TimeSeriesSplit(n_splits=k)
@@ -96,7 +108,7 @@ def training_with_cross_validation(k, X_train, y_train):
         X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
         y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
 
-        model = build_LSTM_model(X_train_fold) #reset model every fold
+        model = build_GRU_model(X_train_fold) #reset model every fold
         model.fit(X_train_fold, y_train_fold, epochs=5, batch_size=32, verbose=0)
         
         # raw continuous predictions 
@@ -109,9 +121,9 @@ def training_with_cross_validation(k, X_train, y_train):
         
     return errors_per_fold
 
-def visualize(LSE_dict, title):
-    x = sorted(LSE_dict.keys())
-    y = [LSE_dict[i] for i in x]
+def visualize(MSE_dict, title):
+    x = sorted(MSE_dict.keys())
+    y = [MSE_dict[i] for i in x]
 
     # to find the minimum value and its index
     min_mse = min(y)
@@ -156,7 +168,7 @@ if __name__ == "__main__":
     
     #X_train, X_val, y_train, y_val = split_data(X,y)
 
-    LSE_dict = {}
+    MSE_dict = {}
     
     window_step_size = args.window_step_size
     window_size = list(range(window_step_size, 990, window_step_size))
@@ -169,11 +181,11 @@ if __name__ == "__main__":
         # model = build_LSTM_model(X_train)
 
         # LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
-        LSE_per_fold = training_with_cross_validation(k, X_train, y_train)
-        average_LSE = np.mean(LSE_per_fold)
-        LSE_dict[i] = average_LSE
+        MSE_per_fold = training_with_cross_validation(k, X_train, y_train)
+        average_MSE = np.mean(MSE_per_fold)
+        MSE_dict[i] = average_MSE
     
-    visualize(LSE_dict, "LSTM")
+    visualize(MSE_dict, "GRU")
     
     #safe LSE dictionary
     with open('results/LSTM.csv', 'w') as csv_file:  
