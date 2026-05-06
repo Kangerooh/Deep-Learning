@@ -6,7 +6,7 @@ import numpy as np
 #from sklearn.model_selection import train_test_split #kan dit gebruikt worden voor crossvalidation?
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-from sklearn.model_selection import KFold
+from sklearn.model_selection import TimeSeriesSplit
 import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tqdm import tqdm
@@ -88,10 +88,10 @@ def build_LSTM_model(X_train):
 
 
 def training_with_cross_validation(k, X_train, y_train):
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    time_folds = TimeSeriesSplit(n_splits=k)
     errors_per_fold = [] 
 
-    for fold, (train_index, val_index) in enumerate(kf.split(X_train)):
+    for fold, (train_index, val_index) in enumerate(time_folds.split(X_train)):
         print(f'Fold {fold + 1}')
         X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
         y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
