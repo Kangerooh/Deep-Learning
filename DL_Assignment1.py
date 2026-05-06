@@ -99,7 +99,7 @@ def build_GRU_model(X_train):
 
     return model
 
-def training_with_cross_validation(k, X_train, y_train):
+def training_with_cross_validation(k, X_train, y_train, error_type):
     time_folds = TimeSeriesSplit(n_splits=k)
     errors_per_fold = [] 
 
@@ -114,40 +114,45 @@ def training_with_cross_validation(k, X_train, y_train):
         # raw continuous predictions 
         val_predictions = model.predict(X_val_fold)
         
-        # use MSE instead of LSE score
-        mse = mean_squared_error(y_val_fold, val_predictions)
-        errors_per_fold.append(mse)
-        print(f'MSE for fold {fold + 1}: {mse:.5f}')
+        # use MSE or MAE as error type
+        if error_type == "MSE":
+            mse = mean_squared_error(y_val_fold, val_predictions)
+            errors_per_fold.append(mse)
+            print(f'MSE for fold {fold + 1}: {mse:.5f}')
+        elif error_type == "MAE":
+            mae = mean_absolute_error(y_val_fold, val_predictions)
+            errors_per_fold.append(mae)
+            print(f'MAE for fold {fold + 1}: {mae:.5f}')
         
     return errors_per_fold
 
-def visualize(MSE_dict, title):
-    x = sorted(MSE_dict.keys())
-    y = [MSE_dict[i] for i in x]
+def visualize(error_dict, title):
+    x = sorted(error_dict.keys())
+    y = [error_dict[i] for i in x]
 
     # to find the minimum value and its index
-    min_mse = min(y)
-    min_x = x[y.index(min_mse)]
+    min_error = min(y)
+    min_x = x[y.index(min_error)]
 
     plt.figure(figsize=(10, 6))
-    plt.plot(x, y, marker='o', label='MSE')
+    plt.plot(x, y, marker='o', label='Error score')
     
     plt.ylim(bottom=0)  # bottom y axis is set to 0
     plt.xlim(left=0)    # same for x axis
 
     # a red dotted line for the minimum value and add this value to the right side
-    plt.axhline(y=min_mse, color='r', linestyle='--', linewidth=1, alpha=0.7)
-    plt.text(1.01, min_mse, f'Min MSE: {min_mse:.5f}', 
+    plt.axhline(y=min_error, color='r', linestyle='--', linewidth=1, alpha=0.7)
+    plt.text(1.01, min_error, f'Min Error: {min_error:.5f}', 
              color='red', va='center', fontweight='bold',
              transform=plt.gca().get_yaxis_transform())
 
     # vertical lines to have clearer graph
     plt.axvline(x=min_x, color='gray', linestyle=':', alpha=0.5)
-    plt.text(min_x, min_mse, f'  Size: {min_x}', color='blue', va='bottom')
+    plt.text(min_x, min_error, f'  Size: {min_x}', color='blue', va='bottom')
 
     plt.xlabel("Window Size")
-    plt.ylabel("Mean Squared Error")
-    plt.title(f"Mean Squared Error vs Window Size: {title}")
+    plt.ylabel("Error Score")
+    plt.title(f"Error Score vs Window Size: {title}")
     plt.grid(True, linestyle=':', alpha=0.6)
     
     #safe the plot
@@ -168,7 +173,7 @@ if __name__ == "__main__":
     
     #X_train, X_val, y_train, y_val = split_data(X,y)
 
-    MSE_dict = {}
+    error_dict = {}
     
     window_step_size = args.window_step_size
     window_size = list(range(window_step_size, 990, window_step_size))
@@ -181,16 +186,16 @@ if __name__ == "__main__":
         # model = build_LSTM_model(X_train)
 
         # LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
-        MSE_per_fold = training_with_cross_validation(k, X_train, y_train)
-        average_MSE = np.mean(MSE_per_fold)
-        MSE_dict[i] = average_MSE
+        error_per_fold = training_with_cross_validation(k, X_train, y_train, "MSE")
+        average_error = np.mean(error_per_fold)
+        error_dict[i] = average_error
     
-    visualize(MSE_dict, "GRU")
+    visualize(error_dict, "GRU")
     
-    #safe LSE dictionary
+    #safe error dictionary
     with open('results/LSTM.csv', 'w') as csv_file:  
         writer = csv.writer(csv_file)
-        for key, value in MSE_dict.items():
+        for key, value in error_dict.items():
             writer.writerow([key, value])
 
     
