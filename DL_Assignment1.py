@@ -159,58 +159,132 @@ def visualize(error_dict, title):
     plt.savefig(f'results/{title}.png', bbox_inches='tight')
     plt.show()
 
+import os
+
+def train_final_gru_model(scaled_data, best_window, epochs=50, batch_size=32):
+    # Create windows with best window size
+    X, y = create_windows(scaled_data, best_window)
+
+    # Split data chronologically
+    X_train, X_val, y_train, y_val = split_data(X, y)
+
+    # Build and train final GRU model
+    model = build_GRU_model(X_train)
+
+    history = model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        epochs=epochs,
+        batch_size=batch_size,
+        verbose=1
+    )
+
+    # Validation predictions
+    val_pred = model.predict(X_val)
+
+    # Validation errors
+    mse = mean_squared_error(y_val, val_pred)
+    mae = mean_absolute_error(y_val, val_pred)
+
+    print("Final GRU model")
+    print("Best window size:", best_window)
+    print("Validation MSE:", mse)
+    print("Validation MAE:", mae)
+
+    return model, history, mse, mae
+
+
+def recursive_predict(model, scaled_data, window_size, steps=200):
+    """
+    Predict future values recursively:
+    each prediction is fed back as input for the next prediction.
+    """
+    input_window = scaled_data[-window_size:].copy()
+    predictions = []
+
+    for _ in range(steps):
+        X_input = input_window.reshape(1, window_size, 1)
+
+        pred = model.predict(X_input, verbose=0)
+        pred_value = pred[0, 0]
+
+        predictions.append(pred_value)
+
+        # Remove oldest value, add prediction
+        input_window = np.append(input_window[1:], [[pred_value]], axis=0)
+
+    return np.array(predictions).reshape(-1, 1)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--window_step_size", type=int, default=50,
-                        help="Step size for window sizes (default: 50)") #when running it asks us the step size we want
-    args = parser.parse_args()
+    os.makedirs("results", exist_ok=True)
 
-    
-    
-    np.random.seed(0)
-    data = load_data("Xtrain.mat")
-    scaled_data = scale_data(data)
-    
-    #X_train, X_val, y_train, y_val = split_data(X,y)
+    # Final GRU settings based on window-size tuning
+    best_window = 510
+    epochs = 50
+    batch_size = 32
 
-    error_dict = {}
-    
-    window_step_size = args.window_step_size
-    window_size = list(range(window_step_size, 990, window_step_size))
-    
-    for i in tqdm(window_size, desc="Testing Window Sizes"):
-        X_train, y_train = create_windows(scaled_data, i)
+    print('loading data:')
+    series = load_data("Xtrain.mat")
 
-        
-        k = 10  # number of folds
-        # model = build_LSTM_model(X_train)
 
-        # LSE_per_fold = training_with_cross_validation(k, model, X_train, y_train)
-        error_per_fold = training_with_cross_validation(k, X_train, y_train, "MSE")
-        average_error = np.mean(error_per_fold)
-        error_dict[i] = average_error
-    
-    visualize(error_dict, "GRU")
-    
-    #safe error dictionary
-    with open('results/LSTM.csv', 'w') as csv_file:  
-        writer = csv.writer(csv_file)
-        for key, value in error_dict.items():
-            writer.writerow([key, value])
+    scaler = MinMaxScaler()
+    scaled_data = scaler.fit_transform(series.reshape(-1, 1))
 
-    
-    
-    
-    #Xtest, ytest = readfiles()
-    
-    
-    
-    # # example
-    # print("Example input window:", X[0].flatten())
-    # print("Target value:", y[0])
+    X, y = create_windows(scaled_data, best_window)
+    X_train, X_val, y_train, y_val = split_data(X, y)
 
-    # # checks
-    # print("X shape:", X.shape)
-    # print("y shape:", y.shape)
-    # print("Train shape:", X_train.shape, y_train.shape)
-    # print("Val shape:", X_val.shape, y_val.shape)
+    model = build_GRU_model(X_train)
+
+    print("Training GRU model")
+    history = model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        epochs=epochs,
+        batch_size=batch_size,
+        verbose=1
+    )
+
+    val_pred = model.predict(X_val)
+
+    val_mse = mean_squared_error(y_val, val_pred)
+    val_mae = mean_absolute_error(y_val, val_pred)
+
+    print("\nFinal GRU results on scaled validation data")
+    print("Best window size:", best_window)
+    print("epochs:", epochs)
+    print("Validation MSE:", val_mse)
+    print("Validation MAE:", val_mae)
+
+    model_path = f"results/final_GRU_window{best_window}_epochs{epochs}.keras"
+    model.save(model_path)
+    print("Saved model to:", model_path)
+
+    print("Making recursive 200 step prediction")
+    future_preds_scaled = recursive_predict(
+        model=model,
+        scaled_data=scaled_data,
+        window_size=best_window,
+        steps=200
+    )
+
+    future_preds_original = scaler.inverse_transform(future_preds_scaled)
+
+    pred_path = f"results/final_GRU_window{best_window}_recursive_200.csv"
+    np.savetxt(pred_path, future_preds_original, delimiter=",")
+    print("Saved recursive predictions to:", pred_path)
+
+    plt.figure(figsize=(10, 4))
+    plt.plot(future_preds_original, label="Recursive GRU predictions")
+    plt.title(f"Recursive Prediction: GRU, window={best_window}")
+    plt.xlabel("Future time step")
+    plt.ylabel("Predicted value")
+    plt.legend()
+    plt.grid(True)
+
+    plot_path = f"results/final_GRU_window{best_window}_recursive_200.png"
+    plt.savefig(plot_path, bbox_inches="tight")
+    plt.show()
+
+    print("Saved plot to:", plot_path)
