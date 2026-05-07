@@ -246,16 +246,32 @@ if __name__ == "__main__":
         verbose=1
     )
 
+    # Predictions
     val_pred = model.predict(X_val)
 
     val_mse = mean_squared_error(y_val, val_pred)
     val_mae = mean_absolute_error(y_val, val_pred)
+
+
+    # Convert validation predictions and true values back to original scale
+    val_pred_original = scaler.inverse_transform(val_pred)
+    y_val_original = scaler.inverse_transform(y_val)
+
+    # Errors on original scale
+    val_mse_original = mean_squared_error(y_val_original, val_pred_original)
+    val_mae_original = mean_absolute_error(y_val_original, val_pred_original)
+
 
     print("\nFinal GRU results on scaled validation data")
     print("Best window size:", best_window)
     print("epochs:", epochs)
     print("Validation MSE:", val_mse)
     print("Validation MAE:", val_mae)
+
+    # On orignal data
+    print("\nFinal GRU results on original validation data")
+    print("Validation MSE original:", val_mse_original)
+    print("Validation MAE original:", val_mae_original)
 
     model_path = f"results/final_GRU_window{best_window}_epochs{epochs}.keras"
     model.save(model_path)
