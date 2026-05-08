@@ -13,10 +13,10 @@ from tqdm import tqdm
 import csv
 
 
-def load_data(data_file):
+def load_data(data_file, key):
     data = loadmat(data_file)
     #Xtrain = data["Xtrain"]
-    series = data["Xtrain"].flatten()
+    series = data[key].flatten()
     
     return series
 
@@ -36,11 +36,6 @@ def scale_data(series):
 # plt.xlabel("Time step")
 # plt.ylabel("Value")
 # plt.show()
-
-
-
-
-
 
 def create_windows(data, window_size):
     """
@@ -225,7 +220,7 @@ if __name__ == "__main__":
     batch_size = 32
 
     print('loading data:')
-    series = load_data("Xtrain.mat")
+    series = load_data("Xtrain.mat", "Xtrain")
 
 
     scaler = MinMaxScaler()
