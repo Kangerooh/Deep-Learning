@@ -1,16 +1,11 @@
-import pandas as pd
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
-#from sklearn.model_selection import train_test_split #kan dit gebruikt worden voor crossvalidation?
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout, GRU
 from sklearn.model_selection import TimeSeriesSplit
-import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from tqdm import tqdm
-import csv
 import os
 
 
