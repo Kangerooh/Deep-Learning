@@ -11,9 +11,13 @@ import argparse
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tqdm import tqdm
 import csv
+import os
 
 
 def load_data(data_file, key):
+    """
+    Loads .mat file and extracts the dataset as flattened 1D array
+    """
     data = loadmat(data_file)
     #Xtrain = data["Xtrain"]
     series = data[key].flatten()
@@ -21,7 +25,9 @@ def load_data(data_file, key):
     return series
 
 def scale_data(series):
-    # Scale data to [0,1] for neural network training
+    """ 
+    Scale data to [0,1] for neural network training
+    """
     scaler = MinMaxScaler()
     series_scaled = scaler.fit_transform(series.reshape(-1, 1))
     return series_scaled
@@ -53,10 +59,13 @@ def create_windows(data, window_size):
     return np.array(X), np.array(y)
 
 def split_data(X,y): 
-    # reshape to format of samples, timestamp, features
+    """
+    Reshape to format of samples, timestamp, features
+    Splits into 80% training and 20% validation
+
+    """
     X = X.reshape(X.shape[0], X.shape[1], 1)
 
-    # Split into training and validations sets. 
     split = int(0.8 * len(X)) # 80/20 split
 
     X_train = X[:split]
@@ -69,6 +78,10 @@ def split_data(X,y):
 
 
 def build_LSTM_model(X_train):
+    """
+    Builds and compiles a two layer LSTM network
+    Uses dropout regulatization for time series prediction
+    """
     model = Sequential()
     model.add(LSTM(units=128, return_sequences=True,
             input_shape=(X_train.shape[1], 1)))
@@ -82,6 +95,10 @@ def build_LSTM_model(X_train):
     return model
 
 def build_GRU_model(X_train):
+    """
+    Builds and compiles a two layer GRU ntework 
+    Uses dropout regulatization for time series prediction
+    """
     model = Sequential()
     model.add(GRU(units=128, return_sequences=True,
             input_shape=(X_train.shape[1], 1)))
@@ -95,6 +112,11 @@ def build_GRU_model(X_train):
     return model
 
 def training_with_cross_validation(k, X_train, y_train, error_type):
+    """
+    Does time series cross-validation using TimeSeriesSplit
+    Trains a new GRU model for each fold
+    Calculates either MSE or MAE 
+    """
     time_folds = TimeSeriesSplit(n_splits=k)
     errors_per_fold = [] 
 
@@ -122,6 +144,10 @@ def training_with_cross_validation(k, X_train, y_train, error_type):
     return errors_per_fold
 
 def visualize(error_dict, title):
+    """
+    Plots validation error against window sizes
+    Highlights minimum error value 
+    """
     x = sorted(error_dict.keys())
     y = [error_dict[i] for i in x]
 
@@ -154,9 +180,13 @@ def visualize(error_dict, title):
     plt.savefig(f'results/{title}.png', bbox_inches='tight')
     plt.show()
 
-import os
 
 def train_final_gru_model(scaled_data, best_window, epochs=50, batch_size=32):
+    """
+    Creates training/validation datasets using the best window size
+    Trains the final GRU model
+    Evaluates its performance with MSE and MAE
+    """
     # Create windows with best window size
     X, y = create_windows(scaled_data, best_window)
 
@@ -212,6 +242,14 @@ def recursive_predict(model, scaled_data, window_size, steps=200):
     return np.array(predictions).reshape(-1, 1)
 
 if __name__ == "__main__":
+    """
+    Loads and scales data
+    Trains final GRU model
+    Evaluates performances
+    Saves trained model
+    Generates recursive future predictions
+    Saves prediction reuslts and plots them
+    """
     os.makedirs("results", exist_ok=True)
 
     # Final GRU settings based on window-size tuning
