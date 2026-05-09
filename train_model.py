@@ -171,7 +171,7 @@ def visualize(error_dict, title):
     plt.title(f"Error Score vs Window Size: {title}")
     plt.grid(True, linestyle=':', alpha=0.6)
     
-    #safe the plot
+    #save the plot
     plt.savefig(f'results/{title}.png', bbox_inches='tight')
     plt.show()
 
@@ -236,6 +236,13 @@ def recursive_predict(model, scaled_data, window_size, steps=200):
 
     return np.array(predictions).reshape(-1, 1)
 
+def persistence_baseline(last_value, steps=200):
+    """
+    Naive baseline forecast
+    Predicts the last observed value repeatedly
+    """
+    return np.full((steps, 1), last_value)
+
 if __name__ == "__main__":
     """
     Loads and scales data
@@ -280,7 +287,6 @@ if __name__ == "__main__":
     val_mse = mean_squared_error(y_val, val_pred)
     val_mae = mean_absolute_error(y_val, val_pred)
 
-
     # Convert validation predictions and true values back to original scale
     val_pred_original = scaler.inverse_transform(val_pred)
     y_val_original = scaler.inverse_transform(y_val)
@@ -288,7 +294,6 @@ if __name__ == "__main__":
     # Errors on original scale
     val_mse_original = mean_squared_error(y_val_original, val_pred_original)
     val_mae_original = mean_absolute_error(y_val_original, val_pred_original)
-
 
     print("\nFinal GRU results on scaled validation data")
     print("Best window size:", best_window)

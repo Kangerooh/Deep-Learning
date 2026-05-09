@@ -5,8 +5,9 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import load_model
-from train_model import load_data, recursive_predict 
+from train_model import load_data, recursive_predict, persistence_baseline
 import os
+
 
 
 if __name__ == "__main__":
@@ -51,18 +52,33 @@ if __name__ == "__main__":
     """
     print("Loading Xtest...")
     test_series = load_data("Xtest.mat","Xtest").reshape(-1,1)
+   
+    """
+    5. BASELINE PREDICTIONS --> assumes the future will stay the same as the past 
+    """
+    last_train_value = train_series[-1]
+    baseline_preds = persistence_baseline(
+        last_value = last_train_value,
+        steps=len(test_series)
+    )
+    baseline_mse = mean_squared_error(test_series, baseline_preds)
+    baseline_mae = mean_absolute_error(test_series, baseline_preds)
+
+    print("\nBaseline results")
+    print("Baseline MSE:", baseline_mse)
+    print("Baseline MAE:", baseline_mae)
 
     """
-    5. EVALUATOIN
+    6. EVALUATOIN
     """
     mse = mean_squared_error(test_series, future_preds_original)
     mae = mean_absolute_error(test_series, future_preds_original)
-    print("\n Test results")
+    print("\nTest results")
     print("MSE:", mse)
     print("MAE:", mae)
 
     """
-    6. SAVE RESULTS
+    7. SAVE RESULTS
     """
     pred_path = "results/test_predictions.csv"
     np.savetxt(
@@ -73,12 +89,13 @@ if __name__ == "__main__":
     print("Saved predictions to:", pred_path)
 
     """
-    7. PLOT RESULTS
+    8. PLOT RESULTS
     """
     plt.figure(figsize=(10, 4))
 
     plt.plot(test_series, label="True Xtest")
     plt.plot(future_preds_original, label="Recursive predictions")
+    plt.plot(baseline_preds, label="Persistence baseline")
     plt.title("Test vs Predictions (GRU Recursive Forecast)")
     plt.xlabel("Time step")
     plt.ylabel("Value")
