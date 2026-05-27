@@ -1,20 +1,83 @@
 from pathlib import Path
 
 import numpy as np
-"""
-First idea for the model is to use EEGNet. This is a model that is specifically designed for EEG data.
-It should be a good fit for the data that we want to predict and process.
-https://arxiv.org/abs/1611.08024
-"""
+from keras.layers import Input
+from keras.layers import (
+    BatchNormalization,
+    Conv1D,
+    Dense,
+    Dropout,
+    GlobalAveragePooling1D,
+    MaxPooling1D,
+)
+from keras.models import Sequential
+from keras.optimizers import Adam
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-data_path = PROJECT_ROOT / "data" / "processed" / "intra_train.npz"
+PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
+RESULTS_DIR = PROJECT_ROOT / "results"
 
-data = np.load(data_path)
-X = data["X"]
-y = data["y"]
+N_CLASSES = 4
+BATCH_SIZE = 32
+EPOCHS = 50
+LEARNING_RATE = 1e-3
 
-print(X.shape)
-print(y.shape)
-print(X.mean(), X.std())
-print(np.unique(y, return_counts=True))
+
+def load_npz(split_name):
+    path = PROCESSED_DATA_DIR / f"{split_name}.npz"
+    data = np.load(path)
+    return data["X"], data["y"]
+
+
+# build a 1D CNN baselinemodel
+def build_cnn1d(input_shape, n_classes=N_CLASSES):
+    model = Sequential(
+        [
+            Input(shape=input_shape),
+            Conv1D(32, kernel_size=7, padding="same", activation="relu"),
+            BatchNormalization(),
+            MaxPooling1D(pool_size=2),
+            Conv1D(64, kernel_size=5, padding="same", activation="relu"),
+            BatchNormalization(),
+            MaxPooling1D(pool_size=2),
+            Conv1D(64, kernel_size=3, padding="same", activation="relu"),
+            BatchNormalization(),
+            GlobalAveragePooling1D(),
+            Dropout(0.5),
+            Dense(n_classes, activation="softmax"),
+        ],
+        name="cnn1d_baseline",
+    )
+    model.compile(
+        optimizer=Adam(learning_rate=LEARNING_RATE),
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"],
+    )
+    return model
+
+
+def main():
+    train_split = "intra_train"
+    X_train, y_train = load_npz(train_split)
+
+    model = build_cnn1d(input_shape=X_train.shape[1:])
+
+    print("Training model...")
+
+    model.fit(
+        X_train,
+        y_train,
+        epochs=EPOCHS,
+        batch_size=BATCH_SIZE,
+        verbose=1,
+    )
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    model_path = RESULTS_DIR / f"cnn1d_{train_split}.keras"
+    model.save(model_path)
+
+    print(f"\nSaved model to: {model_path}")
+
+
+if __name__ == "__main__":
+    main()
