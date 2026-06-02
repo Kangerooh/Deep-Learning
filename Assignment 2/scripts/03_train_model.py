@@ -55,15 +55,12 @@ def build_cnn1d(input_shape, n_classes=N_CLASSES):
     )
     return model
 
-
-def main():
-    train_split = "intra_train"
-    X_train, y_train = load_npz(train_split)
-
+def train_and_save(split_name, model_output_name):
+    print(f"\n--- Starting Training for: {split_name} ---")
+    X_train, y_train = load_npz(split_name)
+    
     model = build_cnn1d(input_shape=X_train.shape[1:])
-
-    print("Training model...")
-
+    
     model.fit(
         X_train,
         y_train,
@@ -71,12 +68,19 @@ def main():
         batch_size=BATCH_SIZE,
         verbose=1,
     )
-
+    
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    model_path = RESULTS_DIR / f"cnn1d_{train_split}.keras"
+    model_path = RESULTS_DIR / f"{model_output_name}.keras"
     model.save(model_path)
+    print(f"Saved model to: {model_path}")
 
-    print(f"\nSaved model to: {model_path}")
+def main():
+    # Experiment 1: Intra-subject Training
+    train_and_save(split_name="intra_train", model_output_name="cnn1d_intra")
+    
+    # Experiment 2: Cross-subject Training
+    train_and_save(split_name="cross_train", model_output_name="cnn1d_cross")
+
 
 
 if __name__ == "__main__":
