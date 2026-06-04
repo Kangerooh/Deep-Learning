@@ -209,6 +209,10 @@ def preprocess_folder(dataset_name, input_folder):
     y_final = np.concatenate(all_y, axis=0)
     source_files = np.array(all_source_files)
 
+    n_windows, n_timesteps, n_chans = X_final.shape
+    effective_sample_rate = SAMPLE_RATE / DOWNSAMPLE_FACTOR
+    eegnet_kern_length = int(effective_sample_rate / 2)
+
     PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     np.savez_compressed(
@@ -218,13 +222,23 @@ def preprocess_folder(dataset_name, input_folder):
         source_files=source_files,
         sample_rate=SAMPLE_RATE,
         downsample_factor=DOWNSAMPLE_FACTOR,
-        effective_sample_rate=SAMPLE_RATE / DOWNSAMPLE_FACTOR,
+        effective_sample_rate=effective_sample_rate,
         window_seconds=WINDOW_SECONDS,
         stride_seconds=STRIDE_SECONDS,
+        # layout metadata for EEGNet (X stays time x channels; reshape at load time)
+        x_layout="samples_time_channels",
+        n_timesteps=n_timesteps,
+        n_chans=n_chans,
+        eegnet_input_shape=np.array([n_chans, n_timesteps, 1], dtype=np.int64),
+        eegnet_kern_length=eegnet_kern_length,
     )
 
     print(f"Saved to: {output_file}")
-    print(f"X shape: {X_final.shape}")
+    print(f"X shape (baseline): {X_final.shape}  -> (n_windows, timesteps, channels)")
+    print(
+        f"EEGNet layout:      ({n_windows}, {n_chans}, {n_timesteps}, 1)  "
+        f"[Chans={n_chans}, Samples={n_timesteps}, kernLength={eegnet_kern_length}]"
+    )
     print(f"y shape: {y_final.shape}")
 
     print("\nOriginal file counts:")
