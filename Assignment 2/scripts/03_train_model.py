@@ -56,6 +56,9 @@ def build_eegnet(meta, n_classes=N_CLASSES):
         Chans=meta["n_chans"],
         Samples=meta["n_timesteps"],
         kernLength=meta["eegnet_kern_length"],
+        poolSize1=meta["eegnet_pool_size1"],
+        poolSize2=meta["eegnet_pool_size2"],
+        sepKernelLength=meta["eegnet_sep_kernel_length"],
     )
     model.compile(
         optimizer=Adam(learning_rate=LEARNING_RATE),
@@ -83,7 +86,9 @@ def train_eegnet(split_name, model_output_name):
     X, y, meta = load_split(split_name, layout="eegnet")
     print(
         f"  Chans={meta['n_chans']}, Samples={meta['n_timesteps']}, "
-        f"kernLength={meta['eegnet_kern_length']}, X shape={X.shape}"
+        f"kernLength={meta['eegnet_kern_length']}, "
+        f"pool=({meta['eegnet_pool_size1']}, {meta['eegnet_pool_size2']}), "
+        f"sepKernel={meta['eegnet_sep_kernel_length']}, X shape={X.shape}"
     )
 
     model = build_eegnet(meta)

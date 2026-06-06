@@ -20,12 +20,17 @@ RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
 
 
-# settings (tbc)
 SAMPLE_RATE = 2034
 DOWNSAMPLE_FACTOR = 10
 
 WINDOW_SECONDS = 2.0
 STRIDE_SECONDS = 1.0
+
+# EEGNet reference design assumes 128 Hz; scale temporal kernels/pooling to match.
+EEGNET_REFERENCE_RATE = 128.0
+EEGNET_REF_POOL_SIZE1 = 4
+EEGNET_REF_POOL_SIZE2 = 8
+EEGNET_REF_SEP_KERNEL = 16
 
 # make really small due to MEG values being ~10^-12
 EPS = 1e-20
@@ -211,7 +216,11 @@ def preprocess_folder(dataset_name, input_folder):
 
     n_windows, n_timesteps, n_chans = X_final.shape
     effective_sample_rate = SAMPLE_RATE / DOWNSAMPLE_FACTOR
+    rate_scale = effective_sample_rate / EEGNET_REFERENCE_RATE
     eegnet_kern_length = int(effective_sample_rate / 2)
+    eegnet_pool_size1 = max(1, round(EEGNET_REF_POOL_SIZE1 * rate_scale))
+    eegnet_pool_size2 = max(1, round(EEGNET_REF_POOL_SIZE2 * rate_scale))
+    eegnet_sep_kernel_length = max(1, round(EEGNET_REF_SEP_KERNEL * rate_scale))
 
     PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -231,13 +240,17 @@ def preprocess_folder(dataset_name, input_folder):
         n_chans=n_chans,
         eegnet_input_shape=np.array([n_chans, n_timesteps, 1], dtype=np.int64),
         eegnet_kern_length=eegnet_kern_length,
+        eegnet_pool_size1=eegnet_pool_size1,
+        eegnet_pool_size2=eegnet_pool_size2,
+        eegnet_sep_kernel_length=eegnet_sep_kernel_length,
     )
 
     print(f"Saved to: {output_file}")
     print(f"X shape (baseline): {X_final.shape}  -> (n_windows, timesteps, channels)")
     print(
         f"EEGNet layout:      ({n_windows}, {n_chans}, {n_timesteps}, 1)  "
-        f"[Chans={n_chans}, Samples={n_timesteps}, kernLength={eegnet_kern_length}]"
+        f"[Chans={n_chans}, Samples={n_timesteps}, kernLength={eegnet_kern_length}, "
+        f"pool=({eegnet_pool_size1}, {eegnet_pool_size2}), sepKernel={eegnet_sep_kernel_length}]"
     )
     print(f"y shape: {y_final.shape}")
 
