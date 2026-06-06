@@ -12,6 +12,8 @@ from collections import Counter
 import h5py
 import numpy as np
 
+from data_processing_utilities import compute_eegnet_params
+
 
 # paths
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,12 +27,6 @@ DOWNSAMPLE_FACTOR = 10
 
 WINDOW_SECONDS = 2.0
 STRIDE_SECONDS = 1.0
-
-# EEGNet reference design assumes 128 Hz; scale temporal kernels/pooling to match.
-EEGNET_REFERENCE_RATE = 128.0
-EEGNET_REF_POOL_SIZE1 = 4
-EEGNET_REF_POOL_SIZE2 = 8
-EEGNET_REF_SEP_KERNEL = 16
 
 # make really small due to MEG values being ~10^-12
 EPS = 1e-20
@@ -184,7 +180,6 @@ def preprocess_folder(dataset_name, input_folder):
 
     all_X = []
     all_y = []
-    all_source_files = []
 
     original_label_counts = Counter()
     window_label_counts = Counter()
@@ -206,21 +201,15 @@ def preprocess_folder(dataset_name, input_folder):
 
         all_X.append(X)
         all_y.append(y)
-        all_source_files.extend([file_path.name] * len(y))
 
         window_label_counts[label] += len(y)
 
     X_final = np.concatenate(all_X, axis=0)
     y_final = np.concatenate(all_y, axis=0)
-    source_files = np.array(all_source_files)
 
     n_windows, n_timesteps, n_chans = X_final.shape
     effective_sample_rate = SAMPLE_RATE / DOWNSAMPLE_FACTOR
-    rate_scale = effective_sample_rate / EEGNET_REFERENCE_RATE
-    eegnet_kern_length = int(effective_sample_rate / 2)
-    eegnet_pool_size1 = max(1, round(EEGNET_REF_POOL_SIZE1 * rate_scale))
-    eegnet_pool_size2 = max(1, round(EEGNET_REF_POOL_SIZE2 * rate_scale))
-    eegnet_sep_kernel_length = max(1, round(EEGNET_REF_SEP_KERNEL * rate_scale))
+    eegnet_params = compute_eegnet_params(effective_sample_rate)
 
     PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -228,29 +217,20 @@ def preprocess_folder(dataset_name, input_folder):
         output_file,
         X=X_final,
         y=y_final,
-        source_files=source_files,
         sample_rate=SAMPLE_RATE,
         downsample_factor=DOWNSAMPLE_FACTOR,
         effective_sample_rate=effective_sample_rate,
         window_seconds=WINDOW_SECONDS,
         stride_seconds=STRIDE_SECONDS,
-        # layout metadata for EEGNet (X stays time x channels; reshape at load time)
-        x_layout="samples_time_channels",
-        n_timesteps=n_timesteps,
-        n_chans=n_chans,
-        eegnet_input_shape=np.array([n_chans, n_timesteps, 1], dtype=np.int64),
-        eegnet_kern_length=eegnet_kern_length,
-        eegnet_pool_size1=eegnet_pool_size1,
-        eegnet_pool_size2=eegnet_pool_size2,
-        eegnet_sep_kernel_length=eegnet_sep_kernel_length,
     )
 
     print(f"Saved to: {output_file}")
     print(f"X shape (baseline): {X_final.shape}  -> (n_windows, timesteps, channels)")
     print(
         f"EEGNet layout:      ({n_windows}, {n_chans}, {n_timesteps}, 1)  "
-        f"[Chans={n_chans}, Samples={n_timesteps}, kernLength={eegnet_kern_length}, "
-        f"pool=({eegnet_pool_size1}, {eegnet_pool_size2}), sepKernel={eegnet_sep_kernel_length}]"
+        f"[Chans={n_chans}, Samples={n_timesteps}, kernLength={eegnet_params['eegnet_kern_length']}, "
+        f"pool=({eegnet_params['eegnet_pool_size1']}, {eegnet_params['eegnet_pool_size2']}), "
+        f"sepKernel={eegnet_params['eegnet_sep_kernel_length']}]"
     )
     print(f"y shape: {y_final.shape}")
 

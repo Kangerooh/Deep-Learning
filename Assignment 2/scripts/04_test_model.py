@@ -2,7 +2,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 
 from data_processing_utilities import load_split
 
@@ -60,7 +60,7 @@ def evaluate_all_models():
         print(f"--- Evaluating {model_config['label']} ---")
         accuracies = []
 
-        for category, test_split in EVAL_SPLITS:
+        for _, test_split in EVAL_SPLITS:
             checkpoint = (
                 model_config["intra_checkpoint"]
                 if test_split == "intra_test"
