@@ -38,7 +38,7 @@ MODELS = [
 
 
 def evaluate_split(checkpoint_name, test_split, layout):
-    model_path = RESULTS_DIR / f"{checkpoint_name}.keras"
+    model_path = RESULTS_DIR / checkpoint_name
     if not model_path.exists():
         raise FileNotFoundError(f"Missing trained model: {model_path}")
 

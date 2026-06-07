@@ -7,4 +7,4 @@ __pycache__/
 *.pyc
 Assignment 2/data/raw/
 Assignment 2/data/processed/
-Assignment 2/results/
+Assignment 2/results/*/

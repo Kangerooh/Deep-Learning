@@ -1,0 +1,9 @@
+model,train_split,test_split,test_accuracy_pct
+cnn1d_intra,intra_train,intra_test,54.69
+cnn1d_cross,cross_train,cross_test1,57.42
+cnn1d_cross,cross_train,cross_test2,43.75
+cnn1d_cross,cross_train,cross_test3,68.36
+eegnet_intra,intra_train,intra_test,55.47
+eegnet_cross,cross_train,cross_test1,53.91
+eegnet_cross,cross_train,cross_test2,46.09
+eegnet_cross,cross_train,cross_test3,61.72
