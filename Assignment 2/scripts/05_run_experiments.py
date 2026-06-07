@@ -43,20 +43,20 @@ EARLY_STOP_PATIENCE = 8
 RANDOM_STATE = 42
 
 
-# --- pull the model builders from 03 (numeric module name -> import by path) ---
+# Pull the model builders from 03
 def _load_builders():
     spec = importlib.util.spec_from_file_location(
         "train_model", SCRIPTS_DIR / "03_train_model.py"
     )
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)  # safe: 03's main() is behind __main__ guard
+    spec.loader.exec_module(mod)
     return mod.build_cnn1d, mod.build_eegnet
 
 
 BUILD_CNN1D, BUILD_EEGNET = _load_builders()
 
 
-# Experiment matrix: which checkpoint trains on what, and where it's tested.
+# Experiment matrix with which checkpoint trains on what, and where it's tested
 EXPERIMENTS = [
     {
         "tag": "cnn1d_intra",
@@ -99,8 +99,7 @@ def train_one(exp):
     print(f"\n=== TRAIN {exp['tag']} ({exp['model_type']}) on {exp['train_split']} ===")
     X, y, meta = load_split(exp["train_split"], layout=exp["layout"])
 
-    # Stratified hold-out so val set has all 4 classes (npz is ordered by file!)
-    X_tr, X_val, y_tr, y_val = train_test_split(
+    # Stratified hold-out so val set has all 4 classes
         X, y, test_size=VAL_SPLIT, stratify=y, random_state=RANDOM_STATE
     )
 
