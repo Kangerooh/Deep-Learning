@@ -100,8 +100,15 @@ def train_one(exp):
     X, y, meta = load_split(exp["train_split"], layout=exp["layout"])
 
     # Stratified hold-out so val set has all 4 classes
-        X, y, test_size=VAL_SPLIT, stratify=y, random_state=RANDOM_STATE
+    X_tr, X_val, y_tr, y_val = train_test_split(
+        X,
+        y, 
+        test_size=VAL_SPLIT, 
+        stratify=y, 
+        random_state=RANDOM_STATE
+
     )
+    
 
     model = build_model(exp["model_type"], X, meta)
     es = EarlyStopping(
