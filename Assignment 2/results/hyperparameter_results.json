@@ -1,0 +1,50 @@
+[
+  {
+    "lr": 0.001,
+    "dropout": 0.3,
+    "F1": 8,
+    "best_val_accuracy": 0.5631067752838135
+  },
+  {
+    "lr": 0.001,
+    "dropout": 0.3,
+    "F1": 16,
+    "best_val_accuracy": 0.708737850189209
+  },
+  {
+    "lr": 0.001,
+    "dropout": 0.5,
+    "F1": 8,
+    "best_val_accuracy": 0.5631067752838135
+  },
+  {
+    "lr": 0.001,
+    "dropout": 0.5,
+    "F1": 16,
+    "best_val_accuracy": 0.6699029207229614
+  },
+  {
+    "lr": 0.0005,
+    "dropout": 0.3,
+    "F1": 8,
+    "best_val_accuracy": 0.5728155374526978
+  },
+  {
+    "lr": 0.0005,
+    "dropout": 0.3,
+    "F1": 16,
+    "best_val_accuracy": 0.582524299621582
+  },
+  {
+    "lr": 0.0005,
+    "dropout": 0.5,
+    "F1": 8,
+    "best_val_accuracy": 0.6213592290878296
+  },
+  {
+    "lr": 0.0005,
+    "dropout": 0.5,
+    "F1": 16,
+    "best_val_accuracy": 0.5728155374526978
+  }
+]
