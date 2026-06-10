@@ -16,12 +16,15 @@ all artefacts to results/:
 import importlib.util
 import json
 from pathlib import Path
-
+import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
     classification_report,
     confusion_matrix,
 )
@@ -50,10 +53,14 @@ def _load_builders():
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.build_cnn1d, mod.build_eegnet
+    return (
+        mod.build_cnn1d, 
+        mod.build_eegnet, 
+        mod.build_eegnet_tuned,
+        )
 
 
-BUILD_CNN1D, BUILD_EEGNET = _load_builders()
+BUILD_CNN1D, BUILD_EEGNET, BUILD_EEGNET_TUNED = _load_builders()
 
 
 # Experiment matrix with which checkpoint trains on what, and where it's tested
@@ -86,16 +93,39 @@ EXPERIMENTS = [
         "train_split": "cross_train",
         "test_splits": ["cross_test1", "cross_test2", "cross_test3"],
     },
+    # added extra tags for tuned model
+    {
+        "tag": "eegnet_tuned_intra",
+        "model_type": "eegnet_tuned",
+        "layout": "eegnet",
+        "train_split": "intra_train",
+        "test_splits": ["intra_test"],
+    },
+    {
+        "tag": "eegnet_tuned_cross",
+        "model_type": "eegnet_tuned",
+        "layout": "eegnet",
+        "train_split": "cross_train",
+        "test_splits": ["cross_test1","cross_test2","cross_test3"],
+    },
 ]
 
 
 def build_model(model_type, X, meta):
+# altered this so it also builds the tuned model
+    if model_type == "baseline":
+        return BUILD_CNN1D(
+            input_shape=X.shape[1:]
+            )
     if model_type == "eegnet":
         return BUILD_EEGNET(meta)
-    return BUILD_CNN1D(input_shape=X.shape[1:])
+    if model_type == "eegnet_tuned":
+        return BUILD_EEGNET_TUNED(meta)
+
 
 
 def train_one(exp):
+    tf.keras.backend.clear_session()
     print(f"\n=== TRAIN {exp['tag']} ({exp['model_type']}) on {exp['train_split']} ===")
     X, y, meta = load_split(exp["train_split"], layout=exp["layout"])
 
@@ -109,8 +139,8 @@ def train_one(exp):
 
     )
     
-
-    model = build_model(exp["model_type"], X, meta)
+    # X was first being used, now just X_tr
+    model = build_model(exp["model_type"], X_tr, meta)
     es = EarlyStopping(
         monitor="val_loss",
         patience=EARLY_STOP_PATIENCE,
@@ -125,13 +155,16 @@ def train_one(exp):
         callbacks=[es],
         verbose=1,
     )
+    # added train and test accuracy to compare them
+    train_acc = history.history["accuracy"][-1]
+    val_acc = history.history["val_accuracy"][-1]
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     model.save(RESULTS_DIR / exp["tag"], save_format="tf")
     with open(RESULTS_DIR / f"{exp['tag']}_history.json", "w") as f:
         json.dump(history.history, f, indent=2)
     plot_curves(history.history, exp["tag"])
-    return model
+    return model, train_acc, val_acc
 
 
 def plot_curves(hist, tag):
@@ -153,12 +186,34 @@ def plot_curves(hist, tag):
     plt.close(fig)
 
 
-def evaluate_one(model, exp, test_split, summary_rows):
+def evaluate_one(model, exp, test_split, summary_rows, train_acc, val_acc,):
     X_test, y_test, _ = load_split(test_split, layout=exp["layout"])
     y_prob = model.predict(X_test, verbose=0)
     y_pred = np.argmax(y_prob, axis=1)
 
-    acc = accuracy_score(y_test, y_pred)
+    # added new metrics apart from accuracy 
+    acc = accuracy_score(
+        y_test, 
+        y_pred
+    )
+    precision = precision_score(
+        y_test, 
+        y_pred,
+        average="weighted",
+        zero_division=0
+    )
+    recall = recall_score(
+        y_test,
+        y_pred,
+        average="weighted",
+        zero_division=0
+    )
+    f1= f1_score(
+        y_test,
+        y_pred,
+        average="weighted",
+        zero_division=0
+    )
     print(f"  {exp['tag']} on {test_split}: acc = {acc * 100:.2f}%")
 
     # per-class report -> csv
@@ -177,7 +232,13 @@ def evaluate_one(model, exp, test_split, summary_rows):
             "model": exp["tag"],
             "train_split": exp["train_split"],
             "test_split": test_split,
-            "test_accuracy_pct": round(acc * 100, 2),
+            "train_accuracy_pct": round(train_acc * 100, 2),
+            "validation_accuracy": round(val_acc * 100, 2),
+            "test_accuracy": round(acc *100, 2),
+            "precision":round(precision * 100, 2),
+            "recall":round(recall * 100, 2),
+            "f1_score":round(f1*100, 2),
+
         }
     )
 
@@ -209,9 +270,16 @@ def main():
     summary_rows = []
 
     for exp in EXPERIMENTS:
-        model = train_one(exp)
+        model, train_acc, val_acc = train_one(exp)
         for test_split in exp["test_splits"]:
-            evaluate_one(model, exp, test_split, summary_rows)
+            evaluate_one(
+                model, 
+                exp, 
+                test_split, 
+                summary_rows,
+                train_acc,
+                val_acc,
+                )
 
     summary = pd.DataFrame(summary_rows)
     summary.to_csv(RESULTS_DIR / "summary.csv", index=False)

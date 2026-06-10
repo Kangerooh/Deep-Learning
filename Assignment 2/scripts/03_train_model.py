@@ -47,16 +47,15 @@ EPOCHS = 50
 LEARNING_RATE = 1e-3
 
 
+def get_compile_kwargs(lr=LEARNING_RATE):
+    return{
+        "optimizer": Adam(learning_rate=LEARNING_RATE),
 
-COMPILE_KWARGS = {
+        "loss": "sparse_categorical_crossentropy",
 
-    "optimizer": Adam(learning_rate=LEARNING_RATE),
+        "metrics": ["accuracy"],
+    }
 
-    "loss": "sparse_categorical_crossentropy",
-
-    "metrics": ["accuracy"],
-
-}
 
 
 
@@ -98,7 +97,7 @@ def build_cnn1d(input_shape, n_classes=N_CLASSES):
 
     )
 
-    model.compile(**COMPILE_KWARGS)
+    model.compile(**get_compile_kwargs())
 
     return model
 
@@ -126,12 +125,49 @@ def build_eegnet(meta, n_classes=N_CLASSES):
 
     )
 
-    model.compile(**COMPILE_KWARGS)
+    model.compile(**get_compile_kwargs())
 
     return model
+# tuned hyperparameters 
+TUNED_PARAMS = {
+    "lr": 0.001,
+    "dropout": 0.3,
+    "F1": 16,
+}
 
+def build_eegnet_tuned(meta, n_classes=N_CLASSES):
+    model = EEGNet(
 
+        nb_classes=n_classes,
 
+        Chans=meta["n_chans"],
+
+        Samples=meta["n_timesteps"],
+
+        kernLength=meta["eegnet_kern_length"],
+
+        poolSize1=meta["eegnet_pool_size1"],
+
+        poolSize2=meta["eegnet_pool_size2"],
+
+        sepKernelLength=meta["eegnet_sep_kernel_length"],
+
+        dropoutRate=TUNED_PARAMS["dropout"],
+
+        F1=TUNED_PARAMS["F1"],
+
+        D=2,
+    
+        F2=TUNED_PARAMS["F1"]*2,
+    )
+    model.compile(
+        optimizer=Adam(
+            learning_rate=TUNED_PARAMS["lr"]
+        ),
+        loss = "sparse_categorical_crossentropy",
+        metrics=["accuracy"],
+    )
+    return model
 
 
 def save_model(model, model_output_name):

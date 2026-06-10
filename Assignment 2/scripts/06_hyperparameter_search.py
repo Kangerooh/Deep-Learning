@@ -1,4 +1,6 @@
 """
+06_hyperparameter_search.py
+
 Hyperparamter search for EEGNET.
 This file performs a grid search 
 Load data --> split data --> create all combis 
