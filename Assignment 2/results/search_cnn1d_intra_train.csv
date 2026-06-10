@@ -1,0 +1,2 @@
+trial,model,train_split,val_accuracy,learning_rate,batch_size,dropout,epochs,cnn_filters
+1,cnn1d,intra_train,0.1666666716337204,0.0001,64,0.5,2,"[32, 64, 64]"

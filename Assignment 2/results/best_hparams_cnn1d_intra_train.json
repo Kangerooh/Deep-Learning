@@ -1,0 +1,16 @@
+{
+  "model": "cnn1d",
+  "train_split": "intra_train",
+  "val_accuracy": 0.1666666716337204,
+  "hparams": {
+    "learning_rate": 0.0001,
+    "batch_size": 64,
+    "dropout": 0.5,
+    "epochs": 50,
+    "cnn_filters": [
+      32,
+      64,
+      64
+    ]
+  }
+}
