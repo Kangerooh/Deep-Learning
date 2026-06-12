@@ -28,7 +28,7 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold
 from tensorflow.keras.callbacks import EarlyStopping
 
 from data_processing_utilities import load_split
@@ -40,6 +40,7 @@ RESULTS_DIR = PROJECT_ROOT / "results"
 CLASS_NAMES = ["rest", "story_math", "working_memory", "motor"]
 
 VAL_SPLIT = 0.2
+WINDOWS_PER_RECORDING = 16  # fixed by 02_preprocessing (35624 samples -> 16 windows)
 EPOCHS = 50
 BATCH_SIZE = 32
 EARLY_STOP_PATIENCE = 8
@@ -129,15 +130,18 @@ def train_one(exp):
     print(f"\n=== TRAIN {exp['tag']} ({exp['model_type']}) on {exp['train_split']} ===")
     X, y, meta = load_split(exp["train_split"], layout=exp["layout"])
 
-    # Stratified hold-out so val set has all 4 classes
-    X_tr, X_val, y_tr, y_val = train_test_split(
-        X,
-        y, 
-        test_size=VAL_SPLIT, 
-        stratify=y, 
-        random_state=RANDOM_STATE
-
-    )
+    # Group-aware, class-stratified hold-out: all overlapping windows from one
+    # recording stay on the same side of the split (no train/val leakage).
+    groups = meta.get("groups")
+    if groups is None:
+        # fallback: every recording produced exactly WINDOWS_PER_RECORDING windows,
+        # concatenated in order, so the grouping can be reconstructed.
+        groups = np.arange(len(y)) // WINDOWS_PER_RECORDING
+    n_splits = max(2, round(1 / VAL_SPLIT))
+    sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_STATE)
+    train_idx, val_idx = next(sgkf.split(X, y, groups))
+    X_tr, X_val = X[train_idx], X[val_idx]
+    y_tr, y_val = y[train_idx], y[val_idx]
     
     # X was first being used, now just X_tr
     model = build_model(exp["model_type"], X_tr, meta)

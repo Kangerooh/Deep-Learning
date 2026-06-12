@@ -180,11 +180,12 @@ def preprocess_folder(dataset_name, input_folder):
 
     all_X = []
     all_y = []
+    all_groups = []
 
     original_label_counts = Counter()
     window_label_counts = Counter()
 
-    for file_path in files:
+    for file_idx, file_path in enumerate(files):
         label = get_label(file_path.name)
         original_label_counts[label] += 1
 
@@ -201,11 +202,14 @@ def preprocess_folder(dataset_name, input_folder):
 
         all_X.append(X)
         all_y.append(y)
+        # all windows from this file share one group id (the source recording)
+        all_groups.append(np.full(len(y), file_idx, dtype=np.int64))
 
         window_label_counts[label] += len(y)
 
     X_final = np.concatenate(all_X, axis=0)
     y_final = np.concatenate(all_y, axis=0)
+    groups_final = np.concatenate(all_groups, axis=0)
 
     n_windows, n_timesteps, n_chans = X_final.shape
     effective_sample_rate = SAMPLE_RATE / DOWNSAMPLE_FACTOR
@@ -217,6 +221,7 @@ def preprocess_folder(dataset_name, input_folder):
         output_file,
         X=X_final,
         y=y_final,
+        groups=groups_final,
         sample_rate=SAMPLE_RATE,
         downsample_factor=DOWNSAMPLE_FACTOR,
         effective_sample_rate=effective_sample_rate,
@@ -233,6 +238,7 @@ def preprocess_folder(dataset_name, input_folder):
         f"sepKernel={eegnet_params['eegnet_sep_kernel_length']}]"
     )
     print(f"y shape: {y_final.shape}")
+    print(f"groups: {len(np.unique(groups_final))} source recordings")
 
     print("\nOriginal file counts:")
     for label_id, count in sorted(original_label_counts.items()):

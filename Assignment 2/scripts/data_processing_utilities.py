@@ -37,7 +37,9 @@ def load_split(split_name, layout="cnn1d"):
     if layout == "eegnet":
         X = np.transpose(X, (0, 2, 1))[..., np.newaxis]
 
-    meta = {"n_chans": n_chans, "n_timesteps": n_timesteps}
+    groups = data["groups"] if "groups" in data.files else None
+
+    meta = {"n_chans": n_chans, "n_timesteps": n_timesteps, "groups": groups}
     if layout == "eegnet":
         meta.update(compute_eegnet_params(float(data["effective_sample_rate"])))
 

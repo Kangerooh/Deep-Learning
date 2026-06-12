@@ -49,7 +49,7 @@ LEARNING_RATE = 1e-3
 
 def get_compile_kwargs(lr=LEARNING_RATE):
     return{
-        "optimizer": Adam(learning_rate=LEARNING_RATE),
+        "optimizer": Adam(learning_rate=lr),
 
         "loss": "sparse_categorical_crossentropy",
 
